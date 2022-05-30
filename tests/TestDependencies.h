@@ -8,5 +8,6 @@
 #include "../src/Fq.h"
 #include "../src/Fq2.h"
 #include <gtest/gtest.h>
+#include <gmpxx.h>
 
 #endif //BLS12_381_TESTDEPENDENCIES_H

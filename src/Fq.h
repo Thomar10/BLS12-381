@@ -6,13 +6,12 @@
 #define BLS12_381_FQ_H
 
 #include "FiniteField.h"
-#include "../BigInt.hpp"
+#include <gmpxx.h>
 
-//#define BigInt PRIME = BigInt("4002409555221667393417789825735904156556882819939007885332058136124031650490837864442687629129015664037894272559787");
 class Fq : FiniteField<Fq>{
 
 public:
-    explicit Fq(const BigInt &value);
+    explicit Fq(const mpz_t &value);
 
     Fq operator+(const Fq &rhs) override;
 
@@ -22,8 +21,8 @@ public:
 
     bool operator==(const Fq &rhs) const override;
 
-private:
-    BigInt value;
+//private:
+    mpz_t value{};
 };
 
 #endif //BLS12_381_FQ_H

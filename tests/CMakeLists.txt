@@ -1,6 +1,8 @@
 # Locate GTest
 find_package(GTest REQUIRED)
 include_directories(${GTEST_INCLUDE_DIRS})
+find_package(benchmark REQUIRED)
+include_directories(${BENCHMARK_INCLUDE_DIRS})
 
 # Link runTests with what we want to test and the GTest and pthread library
 add_executable(FqTests FqTest.cpp TestDependencies.h)
