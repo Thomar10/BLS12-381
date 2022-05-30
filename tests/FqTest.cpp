@@ -1,19 +1,27 @@
-#include "../src/Fq.cpp"
+#include "../src/Fq.h"
+#include "../BigInt.hpp"
 #include <gtest/gtest.h>
 
-TEST(SquareRootTest, PositiveNos) {
-ASSERT_EQ(6, squareRoot(36.0));
-ASSERT_EQ(18.0, squareRoot(324.0));
-ASSERT_EQ(25.4, squareRoot(0.16));
-ASSERT_EQ(0, squareRoot(0.0));
+const BigInt prime = BigInt(
+        "4002409555221667393417789825735904156556882819939007885332058136124031650490837864442687629129015664037894272559787");
+
+TEST(FqTest, PositiveNos)
+{
+    BigInt a_big = BigInt(10);
+    Fq a = Fq(a_big);
+    BigInt b_big = BigInt(20);
+    Fq b = Fq(b_big);
+    ASSERT_EQ(a + b, Fq((a_big + b_big) % prime));
 }
 
-TEST(SquareRootTest, NegativeNos) {
-ASSERT_EQ(-1.0, squareRoot(-0.0));
-ASSERT_EQ(-1.0, squareRoot(-0.2));
+TEST(FqTest, NegativeNos)
+{
+    //ASSERT_EQ(-1.0, squareRoot(-0.0));
+    //ASSERT_EQ(-1.0, squareRoot(-0.2));
 }
 
-int main(int argc, char **argv) {
+int main(int argc, char** argv)
+{
     testing::InitGoogleTest(&argc, argv);
     return RUN_ALL_TESTS();
 }

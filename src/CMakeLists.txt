@@ -1,0 +1,1 @@
+add_library(Fq SHARED Fq.cpp)
