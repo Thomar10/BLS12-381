@@ -4,7 +4,7 @@
 #include <benchmark/benchmark.h>
 #include <gmpxx.h>
 #include <iostream>
-#include "../src/Fq.h"
+#include "../src/FqBig.h"
 
 static void FqAdd(benchmark::State &state) {
     // Perform setup here
@@ -19,8 +19,8 @@ static void FqAddBig(benchmark::State &state) {
     mpz_t a, b;
     mpz_init_set_str(a, "2", 10);
     mpz_init_set_str(b, "2", 10);
-    Fq fqA = Fq(a);
-    Fq fqB = Fq(b);
+    FqBig fqA = FqBig(a);
+    FqBig fqB = FqBig(b);
     for (auto _: state) {
         // This code gets timed
         fqA + fqB;

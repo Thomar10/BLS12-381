@@ -6,7 +6,7 @@
 #include "Fq2.h"
 
 
-Fq2::Fq2(const Fq& a0, const Fq& a1) : a0(std::move(a0)), a1(std::move(a1)) {
+Fq2::Fq2(const FqBig& a0, const FqBig& a1) :a0(a0), a1(a1) {
     this->a0 = a0;
     this->a1 = a1;
 }

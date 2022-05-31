@@ -5,7 +5,7 @@
 #ifndef BLS12_381_FQ2_H
 #define BLS12_381_FQ2_H
 
-#include "Fq.h"
+#include "FqBig.h"
 
 class Fq2 : FiniteField<Fq2> {
 
@@ -18,11 +18,11 @@ public:
 
     bool operator==(const Fq2 &rhs) const override;
 
-    Fq2(const Fq &a0, const Fq &a1);
+    Fq2(const FqBig &a0, const FqBig &a1);
 
 private:
-    Fq a0;
-    Fq a1;
+    FqBig a0;
+    FqBig a1;
 };
 
 

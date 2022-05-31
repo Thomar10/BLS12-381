@@ -1,6 +1,6 @@
 #include <bits/stdc++.h>
 #include <gmpxx.h>
-#include "Fq.h"
+#include "FqBig.h"
 using namespace std;
 
 // Function to find a random

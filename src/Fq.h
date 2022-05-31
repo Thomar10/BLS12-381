@@ -1,28 +1,29 @@
 //
-// Created by tlux- on 30-05-2022.
+// Created by Thomas Luxhøj on 30-05-2022.
 //
 
 #ifndef BLS12_381_FQ_H
 #define BLS12_381_FQ_H
 
+#include <gmp.h>
 #include "FiniteField.h"
-#include <gmpxx.h>
+#include "iostream"
 
-class Fq : FiniteField<Fq>{
+class Fq : FiniteField<Fq> {
+	explicit Fq(const mpz_t& big_int);
 
-public:
-    explicit Fq(const mpz_t &value);
+	Fq operator+(const Fq& rhs) override;
 
-    Fq operator+(const Fq &rhs) override;
+	Fq operator-(const Fq& rhs) override;
 
-    Fq operator-(const Fq &rhs) override;
+	Fq operator*(const Fq& rhs) override;
 
-    Fq operator*(const Fq &rhs) override;
-
-    bool operator==(const Fq &rhs) const override;
+	bool operator==(const Fq& rhs) const override;
 
 //private:
-    mpz_t value{};
+	unsigned char
+			value[];
 };
+
 
 #endif //BLS12_381_FQ_H

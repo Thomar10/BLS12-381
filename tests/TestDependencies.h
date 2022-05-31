@@ -5,7 +5,7 @@
 #ifndef BLS12_381_TESTDEPENDENCIES_H
 #define BLS12_381_TESTDEPENDENCIES_H
 
-#include "../src/Fq.h"
+#include "../src/FqBig.h"
 #include "../src/Fq2.h"
 #include <gtest/gtest.h>
 #include <gmpxx.h>
