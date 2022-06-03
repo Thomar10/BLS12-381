@@ -1,5 +1,6 @@
 #include <bitset>
 #include "TestDependencies.h"
+#include "../src/Fq.h"
 
 mpz_class PRIME_TEST(
 		"4002409555221667393417789825735904156556882819939007885332058136124031650490837864442687629129015664037894272559787");
@@ -7,7 +8,7 @@ mpz_class PRIME_TEST(
 TEST(FqTest, PositiveNos)
 {
 //    gmp_printf ("%s is an mpz %Zd\n", "here", this->value);
-
+// std::cout << std::bitset<64>(someFqBack.value[i]).to_string() << std::endl;
 
 	mpz_t a_big, aa, b_big, res;
 	mpz_init(a_big);
@@ -29,28 +30,30 @@ TEST(FqTest, CanCreateFq)
 {
 	mpz_t aa;
 	mpz_init(aa);
-	mpz_set_str(aa, "2", 10);
-	char *buff;
-	char size = 8;
-	int numb = 8 * size - 0;
-	auto count = (mpz_sizeinbase(aa, 2) + numb - 1) / numb;
-	void* p = malloc(count * size);
-	int big_size = mpz_sizeinbase(aa, 2);
-	buff = static_cast<char*>(calloc(1, big_size));
-	//https://machinecognitis.github.io/Math.Gmp.Native/html/c9d371c8-8c16-77a3-2c47-8edae05276c5.htm
-	mpz_export(buff, nullptr, 1, big_size, 1, 0, aa);
-	mpz_export(p, nullptr, 1, big_size, 0, 0, aa);
-	char* hmm;
-	hmm = static_cast<char*>(p);
-	std::cout << big_size << std::endl;
-	auto hej = std::bitset<8>(buff[0]).to_string();
-	auto hej1 = std::bitset<8>(buff[1]).to_string();
-	std::cout << hej << std::endl;
-	std::cout << hej1 << std::endl;
-	std::cout << hmm << std::endl;
-	std::cout << p << std::endl;
-	int i = 0;
-	free(buff);
+	//mpz_set_str(aa, "1111111111111111111111111111111111111111111111111111111111111111", 2);
+	mpz_set_str(aa,
+			"111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+			2);
+
+	Fq someFq = Fq(aa);
+	std::cout << "Fq limbs" << std::endl;
+	//std::cout << std::bitset<64>(someFq.value[0]).to_string() << std::endl;
+	//for (int i = 0; i < 6; i++) {
+	//	std::cout << std::bitset<64>(someFq.value[i]).to_string() << std::endl;
+	//}
+	mpz_t aaback;
+	mpz_init(aaback);
+	//mpz_set_str(aaback, "1", 10);
+	//import - rop, count, order, size, endian, nails, op
+	mpz_import(aaback, 1, 0, sizeof(unsigned long) * 6, 0, 0, someFq.value);
+	gmp_printf ("%s is an mpz %Zd\n", "here", aa);
+	gmp_printf ("%s is an mpz %Zd\n", "here", aaback);
+	Fq someFqBack = Fq(aaback);
+
+	std::cout << someFq.toString() << std::endl;
+	std::cout << someFqBack.toString() << std::endl;
+
+
 	//ASSERT_EQ(-1.0, squareRoot(-0.0));
 	//ASSERT_EQ(-1.0, squareRoot(-0.2));
 }

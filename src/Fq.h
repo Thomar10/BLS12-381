@@ -10,6 +10,7 @@
 #include "iostream"
 
 class Fq : FiniteField<Fq> {
+public:
 	explicit Fq(const mpz_t& big_int);
 
 	Fq operator+(const Fq& rhs) override;
@@ -20,10 +21,13 @@ class Fq : FiniteField<Fq> {
 
 	bool operator==(const Fq& rhs) const override;
 
-//private:
-	unsigned char
-			value[];
-};
+	[[nodiscard]] std::string toString() const;
 
+//private:
+	unsigned long* value;
+
+private:
+	explicit Fq(const unsigned long* limbs);
+};
 
 #endif //BLS12_381_FQ_H
