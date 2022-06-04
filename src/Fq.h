@@ -9,6 +9,7 @@
 #include "FiniteField.h"
 #include "iostream"
 
+#define BYTES 48
 class Fq : FiniteField<Fq> {
 public:
 	explicit Fq(const mpz_t& big_int);
@@ -22,6 +23,8 @@ public:
 	bool operator==(const Fq& rhs) const override;
 
 	[[nodiscard]] std::string toString() const;
+
+	[[nodiscard]] unsigned char* serialize() const;
 
 //private:
 	unsigned long* value;

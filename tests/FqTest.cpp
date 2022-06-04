@@ -32,20 +32,28 @@ TEST(FqTest, CanCreateFq)
 	mpz_init(aa);
 	//mpz_set_str(aa, "1111111111111111111111111111111111111111111111111111111111111111", 2);
 	mpz_set_str(aa,
-			"111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+			"1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
 			2);
 
 	Fq someFq = Fq(aa);
+	unsigned char* serialized = someFq.serialize();
+	std::cout << sizeof(unsigned long) * 6 << std::endl;
 	std::cout << "Fq limbs" << std::endl;
 	//std::cout << std::bitset<64>(someFq.value[0]).to_string() << std::endl;
-	//for (int i = 0; i < 6; i++) {
-	//	std::cout << std::bitset<64>(someFq.value[i]).to_string() << std::endl;
-	//}
+	for (int i = 0; i < 6; i++) {
+		std::cout << std::bitset<64>(someFq.value[i]).to_string() << std::endl;
+	}
+	std::cout << "from bytes" << std::endl;
+	for (int j = 0; j < 6; j++) {
+		for (int i = 0; i<8; ++i) {
+			std::cout << std::bitset<8>(serialized[i+(j*8)]).to_string();
+		}
+		std::cout << std::endl;
+	}
+
 	mpz_t aaback;
 	mpz_init(aaback);
-	//mpz_set_str(aaback, "1", 10);
-	//import - rop, count, order, size, endian, nails, op
-	mpz_import(aaback, 1, 0, sizeof(unsigned long) * 6, 0, 0, someFq.value);
+	mpz_import(aaback, 1, -1, 48, -1, 0, serialized);
 	gmp_printf ("%s is an mpz %Zd\n", "here", aa);
 	gmp_printf ("%s is an mpz %Zd\n", "here", aaback);
 	Fq someFqBack = Fq(aaback);
@@ -56,6 +64,53 @@ TEST(FqTest, CanCreateFq)
 
 	//ASSERT_EQ(-1.0, squareRoot(-0.0));
 	//ASSERT_EQ(-1.0, squareRoot(-0.2));
+}
+
+TEST(FqTest, hej)  {
+	mpz_t a, b, c, a2, b2;
+	mpz_init(a);
+	mpz_set_str(a, "1111111111111111111111111111111111111111111111111111111111111111111111111", 2);
+	void* outRaw = malloc(sizeof(unsigned long)*6);
+	mpz_export(outRaw, nullptr,
+			-1, sizeof(unsigned long) * 6,
+			-1, 0, a);
+	auto* hej = static_cast<u_int64_t*>(outRaw);
+	for (int i = 0; i<6; i++) {
+		std::cout << std::bitset<64>(hej[i]).to_string() << std::endl;
+	}
+}
+
+TEST(FqTest, AddSome) {
+	mpz_t a, b, c, a2, b2;
+	mpz_init(a);
+	mpz_init(a2);
+	mpz_init(b);
+	mpz_init(b2);
+	mpz_init(c);
+	mpz_set_str(a,
+			"1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+			2);
+	mpz_set_str(b,
+			"1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+			2);
+	mpz_set_str(a2,
+			"1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+			2);
+	mpz_set_str(b2,
+			"1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
+			2);
+	Fq aa = Fq(a);
+	Fq bb = Fq(b);
+
+	Fq cc = aa + bb;
+	mpz_add(c, a2, b2);
+	Fq ccc = Fq(c);
+	std::cout << "true res " << std::endl;
+	for (int i = 0; i < 6; i++) {
+		std::cout << std::bitset<64>(ccc.value[i]).to_string() << std::endl;
+	}
+	std::cout << "my " << cc.toString() << std::endl;
+	std::cout << "true " << Fq(c).toString() << std::endl;
 }
 
 int main(int argc, char** argv)
