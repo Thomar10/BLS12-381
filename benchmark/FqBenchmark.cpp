@@ -5,25 +5,34 @@
 #include <gmpxx.h>
 #include <iostream>
 #include "../src/FqBig.h"
+#include "../src/Fq.h"
 
 static void FqAdd(benchmark::State &state) {
     // Perform setup here
+	mpz_t a, b;
+	mpz_inits(a, b, nullptr);
+	gmp_randstate_t rstate;
+	gmp_randinit_default(rstate);
+	mpz_rrandomb(a, rstate, 382);
+	mpz_rrandomb(b, rstate, 382);
+	Fq aa = Fq(a);
+	Fq bb = Fq(b);
     for (auto _: state) {
-        // This code gets timed
-        (2 + 2) % 100;
+		aa + bb;
     }
 }
 
 static void FqAddBig(benchmark::State &state) {
-    // Perform setup here
-    mpz_t a, b;
-    mpz_init_set_str(a, "2", 10);
-    mpz_init_set_str(b, "2", 10);
-    FqBig fqA = FqBig(a);
-    FqBig fqB = FqBig(b);
+	mpz_t a, b;
+	mpz_inits(a, b, nullptr);
+	gmp_randstate_t rstate;
+	gmp_randinit_default(rstate);
+	mpz_rrandomb(a, rstate, 380);
+	mpz_rrandomb(b, rstate, 380);
+	auto aa = FqBig(a);
+	auto bb = FqBig(b);
     for (auto _: state) {
-        // This code gets timed
-        fqA + fqB;
+        aa + bb;
     }
 }
 // Register the function as a benchmark

@@ -13,13 +13,22 @@ FqBig FqBig::operator+(const FqBig &rhs) {
     mpz_t c;
     mpz_init(c);
     mpz_add(c, this->value, rhs.value);
-    mpz_mod(c, c, PRIME.get_mpz_t());
+	if (mpz_cmp(c, PRIME.get_mpz_t()) >= 0) {
+		mpz_mod(c, c, PRIME.get_mpz_t());
+	}
     return FqBig{c};
 }
 
 FqBig FqBig::operator-(const FqBig &rhs) {
-    mpz_sub(this->value, this->value, rhs.value);
-    return FqBig{this->value};// % PRIME};
+	mpz_t c;
+	mpz_init(c);
+	if (mpz_cmp(this->value, rhs.value) < 0) {
+		mpz_add(c, this->value, PRIME.get_mpz_t());
+		mpz_sub(c, c, rhs.value);
+	} else {
+		mpz_sub(c, this->value, rhs.value);
+	}
+    return FqBig{c};
 }
 
 FqBig FqBig::operator*(const FqBig &rhs) {
