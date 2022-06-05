@@ -3,78 +3,69 @@
 //
 
 #include <bitset>
-#include <tuple>
-#include <cstring>
+#include <gmpxx.h>
 #include "Fq.h"
+
+mpz_class PRIME_BIG(
+		"4002409555221667393417789825735904156556882819939007885332058136124031650490837864442687629129015664037894272559787",
+		10);
+
+const unsigned long PRIME[] = {13402431016077863595UL, 2210141511517208575UL, 7435674573564081700UL,
+							   7239337960414712511UL, 5412103778470702295UL, 1873798617647539866UL};
 
 Fq::Fq(const mpz_t& bigint)
 {
+	if (mpz_cmp(bigint, PRIME_BIG.get_mpz_t())>=0) {
+		mpz_t valueToSet;
+		mpz_init(valueToSet);
+		mpz_mod(valueToSet, bigint, PRIME_BIG.get_mpz_t());
+	}
 	void* outRaw = malloc(FQ_BYTES);
 	mpz_export(outRaw, nullptr,
 			-1, 6*8,
 			-1, 0, bigint);
 	this->value = static_cast<u_int64_t*>(outRaw);
-	//mpz_clear(const_cast<mpz_ptr>(bigint));
 }
 
-unsigned long* add(const unsigned long* left, const unsigned long* right) {
-	auto* result = (unsigned long*)malloc(FQ_BYTES);
+unsigned long* add(unsigned long* result, const unsigned long* left, const unsigned long* right)
+{
 	unsigned long difference = 0;
-	for (int i = 0; i<FQ_NUMBER_OF_LIMBS; ++i) {
-		unsigned long leftVal = left[i];
-		unsigned long sum = leftVal + right[i] + difference;
-		difference = sum < leftVal ? 1 : 0;
+	for (int i = 0; i<FQ_NUMBER_OF_LIMBS; i++) {
+		unsigned long sum = left[i]+right[i]+difference;
+		difference = sum<left[i] ? 1 : 0;
 		result[i] = sum;
 	}
 	return result;
 }
 
-std::tuple<unsigned long long, int> subLongs(unsigned long left, unsigned long right, int borrow)
+int sub(unsigned long* result, const unsigned long* left, const unsigned long* right)
 {
-	auto difference = left-right-borrow;
-	auto newBorrow = left >= (difference - right) ? 0 : 1;
-	return std::make_tuple(difference, newBorrow);
-}
-
-std::tuple<unsigned long*, int> sub(unsigned long* left, unsigned long* right) {
-	auto* result = (unsigned long*)malloc(FQ_BYTES);
-	int borrow = 0;
+	unsigned long borrow = 0;
 	unsigned long diff;
-	for (int i = 0; i<FQ_NUMBER_OF_LIMBS; ++i) {
-		std::tie(diff, borrow) =
-				subLongs(left[i],
-						right[i],
-						borrow);
+	for (int i = 0; i<FQ_NUMBER_OF_LIMBS; i++) {
+		diff = left[i]-right[i]-borrow;
+		borrow = ((~left[i] & right[i]) | (~(left[i] ^ right[i]) & diff)) >> 63;
 		result[i] = diff;
 	}
-	return std::make_tuple(result, borrow);
+	return (int)borrow;
 }
 
 Fq Fq::operator+(const Fq& rhs)
 {
-	unsigned long* result = add(this->value, rhs.value);
-	if (compareValues(result, PRIME) >= 0) {
-		int borrow = 0;
-		unsigned long diff;
-		for (int i = 0; i<FQ_NUMBER_OF_LIMBS; ++i) {
-			diff = result[i]-PRIME[i]-borrow;
-			borrow = result[i] >= (diff - PRIME[i]) ? 0 : 1;
-			result[i] = diff;
-		}
-		return Fq(result);
+	auto* result = (unsigned long*)malloc(FQ_BYTES);
+	add(result, this->value, rhs.value);
+	if (compareValues(result, PRIME)>=0) {
+		sub(result, result, PRIME);
 	}
 	return Fq(result);
 }
 
 Fq Fq::operator-(const Fq& rhs)
 {
-	unsigned long* diff;
-	int borrow;
-	std::tie(diff, borrow) = sub(this->value, rhs.value);
-	if (borrow != 0) {
-		unsigned long* newRes = add(diff, const_cast<unsigned long*>(PRIME));
-		free(diff);
-		return Fq(newRes);
+	auto* diff = (unsigned long*)malloc(FQ_BYTES);
+	int borrow = sub(diff, this->value, rhs.value);
+	if (borrow!=0) {
+		add(diff, diff, PRIME);
 	}
 	return Fq(diff);
 }
@@ -86,11 +77,12 @@ Fq Fq::operator*(const Fq& rhs)
 
 bool Fq::operator==(const Fq& rhs) const
 {
-	return compareValues(this->value, rhs.value) == 0;
+	return compareValues(this->value, rhs.value)==0;
 }
 
 Fq::Fq(const unsigned long* limbs)
 		:value(const_cast<unsigned long*>(limbs)) { }
+
 std::string Fq::toString() const
 {
 	// Simply converting the limbs back into mpz_t as toString
@@ -112,7 +104,7 @@ std::string Fq::toString() const
 unsigned char* Fq::serialize() const
 {
 	auto* arr = (unsigned char*)malloc(FQ_BYTES);
-	for (int j = 0; j<6; j++) {
+	for (int j = 0; j<FQ_NUMBER_OF_LIMBS; j++) {
 		for (int i = 0; i<8; i++) {
 			arr[i+(j*8)] = (((unsigned long)this->value[j]) >> (56-(8*i))) & 0xFFu;
 		}
@@ -121,11 +113,13 @@ unsigned char* Fq::serialize() const
 }
 int Fq::compareValues(const unsigned long* left, const unsigned long* right)
 {
-	for (int i = FQ_NUMBER_OF_LIMBS - 1; i >= 0; i--) {
-		auto intermediate = (signed long)(left[i] - right[i]);
-		if (intermediate < 0) {
+	for (int i = FQ_NUMBER_OF_LIMBS-1; i>=0; i--) {
+		auto diff = left[i]-right[i];
+		auto borrow = ((~left[i] & right[i]) | (~(left[i] ^ right[i]) & diff)) >> 63;
+		if (borrow!=0) {
 			return -1;
-		} else if (intermediate > 0) {
+		}
+		else if (diff>0) {
 			return 1;
 		}
 	}

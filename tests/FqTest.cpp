@@ -40,57 +40,18 @@ TEST(FqTest, limbMaker9000)
 	}
 }
 
-TEST(FqTest, CanCreateFq)
-{
-	mpz_t aa;
-	mpz_init(aa);
-	//mpz_set_str(aa, "1111111111111111111111111111111111111111111111111111111111111111", 2);
-	mpz_set_str(aa,
-			"1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
-			2);
-
-	Fq someFq = Fq(aa);
-	unsigned char* serialized = someFq.serialize();
-	std::cout << sizeof(unsigned long)*6 << std::endl;
-	std::cout << "Fq limbs" << std::endl;
-	//std::cout << std::bitset<64>(someFq.value[0]).to_string() << std::endl;
-	for (int i = 0; i<6; i++) {
-		std::cout << std::bitset<64>(someFq.value[i]).to_string() << std::endl;
-	}
-	std::cout << "from bytes" << std::endl;
-	for (int j = 0; j<6; j++) {
-		for (int i = 0; i<8; ++i) {
-			std::cout << std::bitset<8>(serialized[i+(j*8)]).to_string();
-		}
-		std::cout << std::endl;
-	}
-
-	mpz_t aaback;
-	mpz_init(aaback);
-	mpz_import(aaback, 1, -1, 48, -1, 0, serialized);
-	gmp_printf("%s is an mpz %Zd\n", "here", aa);
-	gmp_printf("%s is an mpz %Zd\n", "here", aaback);
-	Fq someFqBack = Fq(aaback);
-
-	std::cout << someFq.toString() << std::endl;
-	std::cout << someFqBack.toString() << std::endl;
-
-
-	//ASSERT_EQ(-1.0, squareRoot(-0.0));
-	//ASSERT_EQ(-1.0, squareRoot(-0.2));
-}
 
 TEST(FqTest, Add)
 {
 	mpz_t a, b, c;
 	mpz_inits(a, b, c, nullptr);
 	gmp_randstate_t rstate;
-	gmp_randinit_default(rstate);
-	mpz_rrandomb(a, rstate, 380);
-	mpz_rrandomb(b, rstate, 380);
-	Fq fqA = Fq(a);
-	Fq fqB = Fq(b);
+	gmp_randinit_mt(rstate);
 	for (int i = 0; i<LOOP_COUNT; i++) {
+		mpz_urandomb(a, rstate, 380);
+		mpz_urandomb(b, rstate, 380);
+		Fq fqA = Fq(a);
+		Fq fqB = Fq(b);
 		mpz_add(c, a, b);
 		mpz_mod(c, c, PRIME_TEST.get_mpz_t());
 		Fq cc = fqA+fqB;
@@ -99,100 +60,60 @@ TEST(FqTest, Add)
 	}
 }
 
-TEST(FqTest, Sub)
+TEST(FqTest, SubNegative)
 {
 	mpz_t a, b, c;
 	mpz_inits(a, b, c, nullptr);
 	gmp_randstate_t rstate;
-	gmp_randinit_default(rstate);
-	mpz_rrandomb(a, rstate, 370);
-	mpz_rrandomb(b, rstate, 380);
-	Fq fqA = Fq(a);
-	Fq fqB = Fq(b);
+	gmp_randinit_mt(rstate);
 	for (int i = 0; i<LOOP_COUNT; i++) {
+		mpz_rrandomb(a, rstate, 370);
+		mpz_rrandomb(b, rstate, 380);
+		Fq fqA = Fq(a);
+		Fq fqB = Fq(b);
 		mpz_sub(c, a, b);
-		Fq something = Fq(c);
-		std::cout << "c intermediate bigint" << std::endl;
-		for (int j = 0; j<6; j++) {
-			std::cout << something.value[j] << std::endl;
-		}
-		mpz_mod(c, c, PRIME_TEST.get_mpz_t());
-		Fq cc = fqA - fqB;
+		mpz_add(c, c, PRIME_TEST.get_mpz_t());
+		Fq cc = fqA-fqB;
 		Fq ccc = Fq(c);
-		std::cout << "true res" << std::endl;
-		for (int j = 0; j<6; j++) {
-			std::cout << ccc.value[j] << std::endl;
-		}
-		std::cout << "my res " << std::endl;
-		for (int j = 0; j<6; j++) {
-			std::cout << cc.value[j] << std::endl;
-		}
 		ASSERT_EQ(cc, ccc);
 	}
 }
-
-TEST(FqTest, SubSome)
+TEST(FqTest, SubEqual)
 {
-	mpz_t a, b, c, a2, b2;
-	mpz_init(a);
-	mpz_init(a2);
-	mpz_init(b);
-	mpz_init(b2);
-	mpz_init(c);
-	mpz_set_str(a,
-			"1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
-			2);
-	mpz_set_str(b,
-			"1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
-			2);
-	mpz_set_str(a2,
-			"1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
-			2);
-	mpz_set_str(b2,
-			"1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
-			2);
-	Fq aa = Fq(a);
-	Fq bb = Fq(b);
-
-	Fq cc = aa-bb;
-	mpz_sub(c, a2, b2);
-	Fq ccc = Fq(c);
-
-	ASSERT_EQ(cc, ccc);
-}
-
-TEST(FqTest, AddSome)
-{
-	mpz_t a, b, c, a2, b2;
-	mpz_init(a);
-	mpz_init(a2);
-	mpz_init(b);
-	mpz_init(b2);
-	mpz_init(c);
-	mpz_set_str(a,
-			"1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
-			2);
-	mpz_set_str(b,
-			"1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
-			2);
-	mpz_set_str(a2,
-			"1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
-			2);
-	mpz_set_str(b2,
-			"1111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111",
-			2);
-	Fq aa = Fq(a);
-	Fq bb = Fq(b);
-
-	Fq cc = aa+bb;
-	mpz_add(c, a2, b2);
-	Fq ccc = Fq(c);
-	std::cout << "true res " << std::endl;
-	for (int i = 0; i<6; i++) {
-		std::cout << std::bitset<64>(ccc.value[i]).to_string() << std::endl;
+	mpz_t a, b, c;
+	mpz_inits(a, b, c, nullptr);
+	gmp_randstate_t rstate;
+	gmp_randinit_mt(rstate);
+	for (int i = 0; i<LOOP_COUNT; i++) {
+		mpz_rrandomb(a, rstate, 380);
+		mpz_rrandomb(b, rstate, 380);
+		Fq fqA = Fq(a);
+		Fq fqB = Fq(b);
+		mpz_sub(c, a, b);
+		if (mpz_cmp(a, b) < 0) {
+			mpz_add(c, c, PRIME_TEST.get_mpz_t());
+		}
+		Fq cc = fqA-fqB;
+		Fq ccc = Fq(c);
+		ASSERT_EQ(cc, ccc);
 	}
-	std::cout << "my " << cc.toString() << std::endl;
-	std::cout << "true " << Fq(c).toString() << std::endl;
+}
+TEST(FqTest, SubNormal)
+{
+	mpz_t a, b, c;
+	mpz_inits(a, b, c, nullptr);
+	gmp_randstate_t rstate;
+	gmp_randinit_mt(rstate);
+	for (int i = 0; i<LOOP_COUNT; i++) {
+		mpz_rrandomb(a, rstate, 380);
+		mpz_rrandomb(b, rstate, 370);
+		Fq fqA = Fq(a);
+		Fq fqB = Fq(b);
+		mpz_sub(c, a, b);
+		Fq cc = fqA-fqB;
+		Fq ccc = Fq(c);
+		ASSERT_EQ(cc, ccc);
+	}
 }
 
 int main(int argc, char** argv)
