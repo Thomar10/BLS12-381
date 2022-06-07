@@ -20,11 +20,11 @@ TEST(FqTest, PositiveNos)
 	mpz_set_str(aa, "100", 10);
 	mpz_set_str(a_big, "100", 10);
 	mpz_set_str(b_big, "100", 10);
-	auto a = FqBig(aa);
-	auto b = FqBig(b_big);
+	auto a = Fq(aa);
+	auto b = Fq(b_big);
 	mpz_add(res, a_big, b_big);
 	mpz_mod(res, res, PRIME_TEST.get_mpz_t());
-	ASSERT_EQ(a+b, FqBig(res));
+	ASSERT_EQ(a+b, Fq(res));
 }
 
 TEST(FqTest, limbMaker9000)
@@ -32,14 +32,31 @@ TEST(FqTest, limbMaker9000)
 	mpz_t prime;
 	mpz_init(prime);
 	mpz_set_str(prime,
-			"4002409555221667393417789825735904156556882819939007885332058136124031650490837864442687629129015664037894272559787",
+			"31812345668571394200522959936182890292651532161468729907319195075155855129916747767697203739041175453056836858347517",
 			10);
 	Fq fqPrime = Fq(prime);
+	std::cout << "WOOOO" << std::endl;
 	for (int i = 0; i<FQ_NUMBER_OF_LIMBS; i++) {
 		std::cout << (unsigned long)(fqPrime.value[i]) << std::endl;
 	}
 }
 
+TEST(FqTest, multiply) {
+	mpz_t a, b, c;
+	mpz_inits(a, b, c, nullptr);
+	gmp_randstate_t rstate;
+	gmp_randinit_mt(rstate);
+	for (int i = 0; i<LOOP_COUNT; i++) {
+		mpz_urandomb(a, rstate, 380);
+		mpz_urandomb(b, rstate, 380);
+		Fq fqA = Fq(a);
+		Fq fqB = Fq(b);
+		mpz_mul(c, a, b);
+		mpz_mod(c, c, PRIME_TEST.get_mpz_t());
+		Fq cc = fqA*fqB;
+		ASSERT_EQ(cc, Fq(c));
+	}
+}
 
 TEST(FqTest, Add)
 {

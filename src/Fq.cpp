@@ -9,22 +9,66 @@
 mpz_class PRIME_BIG(
 		"4002409555221667393417789825735904156556882819939007885332058136124031650490837864442687629129015664037894272559787",
 		10);
+mpz_class REDUCER_RECIPROCAL(
+		"14fec701e8fb0ce9ed5e64273c4f538b1797ab1458a88de9343ea97914956dc87fe11274d898fafbf4d38259380b4820", 16);
 
 const unsigned long PRIME[] = {13402431016077863595UL, 2210141511517208575UL, 7435674573564081700UL,
 							   7239337960414712511UL, 5412103778470702295UL, 1873798617647539866UL};
 
+const unsigned long FACTOR2[] = {9940570264628428797UL, 2912381532814513128, 1652591199965612872,
+								 1868090109324352332, 7544399084751736664, 14893510650384546964UL};
+
+const unsigned long FACTOR[] = {16756192169395485951UL, 5199523261093368083, 5482832581257388811,
+								6348365502327206619, 10693994226538145999UL, 58177775978064636};
+const unsigned long FACTOR3[] = {6771271514943544511, 2890929382993486984, 10877040978858080742UL,
+								 3842907310079183935, 9648570305998340524UL, 363692343146471207};
+
+const int REDUCER_BITS = 384;
+
+int compareValues(const unsigned long* left, const unsigned long* right)
+{
+	for (int i = FQ_NUMBER_OF_LIMBS-1; i>=0; i--) {
+
+		if (left[i]<right[i]) {
+			return -1;
+		}
+		else if (left[i]>right[i]) {
+			return 1;
+		}
+	}
+	return 0;
+}
+
+void convertIntoMontgomery(mpz_t& value)
+{
+	mpz_mul_2exp(value, value, REDUCER_BITS);
+	mpz_mod(value, value, PRIME_BIG.get_mpz_t());
+}
+
+void convertOutMontgomery(mpz_t& value)
+{
+	mpz_mul(value, value, REDUCER_RECIPROCAL.get_mpz_t());
+	mpz_mod(value, value, PRIME_BIG.get_mpz_t());
+}
+
 Fq::Fq(const mpz_t& bigint)
 {
-	if (mpz_cmp(bigint, PRIME_BIG.get_mpz_t())>=0) {
-		mpz_t valueToSet;
-		mpz_init(valueToSet);
-		mpz_mod(valueToSet, bigint, PRIME_BIG.get_mpz_t());
-	}
+	// MAKE IT HANDLE VALUES BELOW 6 LIMBS, E.G 320 BITS, I THINK
+	// ALSO FIND OUY WHY I CANNOT CLEAR valueToSet...
+	mpz_t valueToSet;
+	mpz_init(valueToSet);
+	mpz_set(valueToSet, bigint);
+	auto* outRaw2 = static_cast<unsigned long*>(malloc(FQ_BYTES));
+	mpz_export(outRaw2, nullptr,
+			-1, 6*8,
+			-1, 0, valueToSet);
+	convertIntoMontgomery(valueToSet);
 	void* outRaw = malloc(FQ_BYTES);
 	mpz_export(outRaw, nullptr,
 			-1, 6*8,
-			-1, 0, bigint);
+			-1, 0, valueToSet);
 	this->value = static_cast<u_int64_t*>(outRaw);
+	//mpz_clear(valueToSet);
 }
 
 unsigned long* add(unsigned long* result, const unsigned long* left, const unsigned long* right)
@@ -70,9 +114,102 @@ Fq Fq::operator-(const Fq& rhs)
 	return Fq(diff);
 }
 
+unsigned long multiplyHigh(unsigned long x, unsigned long y)
+{
+	unsigned long x1 = x >> 32;
+	unsigned long x2 = x & 0xFFFFFFFFL;
+	unsigned long y1 = y >> 32;
+	unsigned long y2 = y & 0xFFFFFFFFL;
+	unsigned long z2 = x2*y2;
+	unsigned long t = x1*y2+(z2 >> 32);
+	unsigned long z1 = t & 0xFFFFFFFFL;
+	unsigned long z0 = t >> 32;
+	z1 += x2*y1;
+	return x1*y1+z0+(z1 >> 32);
+}
+
+void multiplyUnsignedLongsAndAdd(
+		unsigned long* result, unsigned long left,
+		unsigned long right, unsigned long carry,
+		unsigned long overflow)
+{
+	unsigned long lowerPart = left*right;
+	unsigned long highPart = multiplyHigh(left, right);
+	unsigned long add1 = lowerPart+overflow;
+	unsigned long overflow1 = add1<lowerPart ? 1 : 0;
+	unsigned long add2 = add1+carry;
+	unsigned long overflow2 = add2<add1 ? 1 : 0;
+	unsigned long highPart1 = highPart+overflow2+overflow1;
+	result[0] = highPart1;
+	result[1] = add2;
+}
+
+void mul(unsigned long* result, const unsigned long* left, const unsigned long* right)
+{
+	auto* multiplyAndAdd = (unsigned long*)malloc(sizeof(unsigned long)*3);
+	for (int i = 0; i<FQ_NUMBER_OF_LIMBS; i++) {
+		unsigned long carry = 0;
+		for (int j = 0; j<FQ_NUMBER_OF_LIMBS; j++) {
+			multiplyUnsignedLongsAndAdd(multiplyAndAdd, left[i], right[j],
+					carry, result[i+j]);
+			carry = multiplyAndAdd[0];
+			result[i+j] = multiplyAndAdd[1];
+		}
+		result[i+FQ_NUMBER_OF_LIMBS] = carry;
+	}
+	free(multiplyAndAdd);
+}
+
+void multiplyAndModReduce(unsigned long* result, const unsigned long* product, const unsigned long* factor)
+{
+	auto* multiplyAndAdd = (unsigned long*)malloc(sizeof(unsigned long)*2);
+	for (int i = 0; i<=FQ_NUMBER_OF_LIMBS-1; i++) {
+		unsigned long carry = 0;
+		for (int j = 0; j<FQ_NUMBER_OF_LIMBS-i; j++) {
+			multiplyUnsignedLongsAndAdd(multiplyAndAdd, product[i], factor[j], carry, result[i+j]);
+			carry = multiplyAndAdd[0];
+			result[i+j] = multiplyAndAdd[1];
+		}
+	}
+	free(multiplyAndAdd);
+}
+
+unsigned long* addLong(unsigned long* result, const unsigned long* left, const unsigned long* right)
+{
+	unsigned long difference = 0;
+	for (int i = 0; i<FQ_NUMBER_OF_LIMBS*2; i++) {
+		unsigned long sum = left[i]+right[i]+difference;
+		difference = sum<left[i] ? 1 : 0;
+		result[i] = sum;
+	}
+	return result;
+}
+
+unsigned long* reduce(unsigned long* product)
+{
+	auto* temp = static_cast<unsigned long*>(malloc(FQ_BYTES));
+	multiplyAndModReduce(temp, product, FACTOR2);
+	auto* reduced1 = static_cast<unsigned long*>(malloc(FQ_BYTES*2));
+	mul(reduced1, temp, PRIME);
+	addLong(reduced1, product, reduced1);
+	auto* temp3 = static_cast<unsigned long*>(malloc(FQ_BYTES));
+	// Shift right 384 bits, here comes the advance of not our chosen reducer.
+	// As the shift is simply the upper 6 limbs.
+	std::copy(reduced1+6, reduced1+12, temp3);
+	if (compareValues(temp3, PRIME)<0) {
+		return temp3;
+	}
+	else {
+		sub(temp3, temp3, PRIME);
+		return temp3;
+	}
+}
+
 Fq Fq::operator*(const Fq& rhs)
 {
-	return Fq(this->value);
+	auto* result = (unsigned long*)malloc(FQ_BYTES*2);
+	mul(result, this->value, rhs.value);
+	return Fq(reduce(result));
 }
 
 bool Fq::operator==(const Fq& rhs) const
@@ -90,13 +227,14 @@ std::string Fq::toString() const
 	mpz_t toString;
 	mpz_init(toString);
 	mpz_import(toString, 1, -1, FQ_BYTES, -1, 0, this->value);
-	//auto* stringPointer = static_cast<char*>(malloc(FQ_BYTES));
+	convertOutMontgomery(toString);
 	auto* stringPointer = mpz_get_str(nullptr, 10, toString);
-	//mpz_clear(toString);
+	mpz_clear(toString);
 	return stringPointer;
 }
 
 /**
+ * 	****DOES NOT WORK****
  *	Returns a byte array with most least word first.
  *
  * @return
@@ -110,18 +248,4 @@ unsigned char* Fq::serialize() const
 		}
 	}
 	return arr;
-}
-int Fq::compareValues(const unsigned long* left, const unsigned long* right)
-{
-	for (int i = FQ_NUMBER_OF_LIMBS-1; i>=0; i--) {
-		auto diff = left[i]-right[i];
-		auto borrow = ((~left[i] & right[i]) | (~(left[i] ^ right[i]) & diff)) >> 63;
-		if (borrow!=0) {
-			return -1;
-		}
-		else if (diff>0) {
-			return 1;
-		}
-	}
-	return 0;
 }

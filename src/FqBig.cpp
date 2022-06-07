@@ -3,10 +3,26 @@
 
 mpz_class PRIME("1A0111EA397FE69A4B1BA7B6434BACD764774B84F38512BF6730D2A0F6B0F6241EABFFFEB153FFFFB9FEFFFFFFFFAAAB", 16);
 
+mpz_class REDUCER_RECIPROCAL_BIG("14fec701e8fb0ce9ed5e64273c4f538b1797ab1458a88de9343ea97914956dc87fe11274d898fafbf4d38259380b4820", 16);
+
+const int REDUCER_BITS = 384;
+
+void convertIntoMontgomery(mpz_t& value) {
+	mpz_mul_2exp(value, value, REDUCER_BITS);
+	mpz_mod(value, value, PRIME.get_mpz_t());
+}
+
+void convertOutMontgomery(mpz_t& value) {
+	mpz_mul(value, value, REDUCER_RECIPROCAL_BIG.get_mpz_t());
+	mpz_mod(value, value, PRIME.get_mpz_t());
+}
 
 FqBig::FqBig(const mpz_t &value) {
-    mpz_set(this->value, value);
-//    this->value = value;
+	mpz_t valueToSet;
+	mpz_init(valueToSet);
+	mpz_set(valueToSet, value);
+	convertIntoMontgomery(valueToSet);
+    mpz_set(this->value, valueToSet);
 }
 
 FqBig FqBig::operator+(const FqBig &rhs) {

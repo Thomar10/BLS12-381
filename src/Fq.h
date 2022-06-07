@@ -64,8 +64,8 @@ public:
 
 	unsigned long* value;
 private:
-	[[nodiscard]] static int compareValues(const unsigned long* left, const unsigned long* right);
 	explicit Fq(const unsigned long* limbs);
+
 };
 
 #endif //BLS12_381_FQ_H
