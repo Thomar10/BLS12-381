@@ -75,3 +75,14 @@ bool FqBig::operator==(const FqBig &rhs) const {
     int result = mpz_cmp(this->value, rhs.value);
     return result == 0;
 }
+
+std::string FqBig::toString() const {
+    mpz_t toString;
+    mpz_init(toString);
+    mpz_set(toString, this->value);
+    convertOutMontgomery(toString);
+    auto* stringPointer = mpz_get_str(nullptr, 10, toString);
+    mpz_clear(toString);
+    return stringPointer;
+}
+

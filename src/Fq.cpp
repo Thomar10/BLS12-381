@@ -49,15 +49,10 @@ void convertOutMontgomery(mpz_t& value)
 
 Fq::Fq(const mpz_t& bigint)
 {
-	// MAKE IT HANDLE VALUES BELOW 6 LIMBS, E.G 320 BITS, I THINK
 	// ALSO FIND OUY WHY I CANNOT CLEAR valueToSet...
 	mpz_t valueToSet;
 	mpz_init(valueToSet);
 	mpz_set(valueToSet, bigint);
-	auto* outRaw2 = static_cast<unsigned long*>(malloc(FQ_BYTES));
-	mpz_export(outRaw2, nullptr,
-			-1, 6*8,
-			-1, 0, valueToSet);
 	convertIntoMontgomery(valueToSet);
 	void* outRaw = malloc(FQ_BYTES);
 	mpz_export(outRaw, nullptr,
@@ -140,9 +135,8 @@ void multiplyUnsignedLongsAndAdd(
 	result[1] = add2;
 }
 
-void mul(unsigned long* result, const unsigned long* left, const unsigned long* right)
+void mul(unsigned long* result, unsigned long* multiplyAndAdd, const unsigned long* left, const unsigned long* right)
 {
-	auto* multiplyAndAdd = (unsigned long*)malloc(sizeof(unsigned long)*3);
 	for (int i = 0; i<FQ_NUMBER_OF_LIMBS; i++) {
 		unsigned long carry = 0;
 		for (int j = 0; j<FQ_NUMBER_OF_LIMBS; j++) {
@@ -153,12 +147,10 @@ void mul(unsigned long* result, const unsigned long* left, const unsigned long* 
 		}
 		result[i+FQ_NUMBER_OF_LIMBS] = carry;
 	}
-	free(multiplyAndAdd);
 }
 
-void multiplyAndModReduce(unsigned long* result, const unsigned long* product, const unsigned long* factor)
+void multiplyAndModReduce(unsigned long* result, unsigned long* multiplyAndAdd, const unsigned long* product, const unsigned long* factor)
 {
-	auto* multiplyAndAdd = (unsigned long*)malloc(sizeof(unsigned long)*2);
 	for (int i = 0; i<=FQ_NUMBER_OF_LIMBS-1; i++) {
 		unsigned long carry = 0;
 		for (int j = 0; j<FQ_NUMBER_OF_LIMBS-i; j++) {
@@ -167,7 +159,6 @@ void multiplyAndModReduce(unsigned long* result, const unsigned long* product, c
 			result[i+j] = multiplyAndAdd[1];
 		}
 	}
-	free(multiplyAndAdd);
 }
 
 unsigned long* addLong(unsigned long* result, const unsigned long* left, const unsigned long* right)
@@ -181,31 +172,33 @@ unsigned long* addLong(unsigned long* result, const unsigned long* left, const u
 	return result;
 }
 
-unsigned long* reduce(unsigned long* product)
+unsigned long* reduce(unsigned long* product, unsigned long* multiplyAndAdd)
 {
 	auto* temp = static_cast<unsigned long*>(malloc(FQ_BYTES));
-	multiplyAndModReduce(temp, product, FACTOR);
+	multiplyAndModReduce(temp, multiplyAndAdd, product, FACTOR);
 	auto* reduced1 = static_cast<unsigned long*>(malloc(FQ_BYTES*2));
-	mul(reduced1, temp, PRIME);
+	mul(reduced1,multiplyAndAdd, temp, PRIME);
 	addLong(reduced1, product, reduced1);
-	auto* temp3 = static_cast<unsigned long*>(malloc(FQ_BYTES));
 	// Shift right 384 bits, here comes the advance of not our chosen reducer.
 	// As the shift is simply the upper 6 limbs.
-	std::copy(reduced1+6, reduced1+12, temp3);
-	if (compareValues(temp3, PRIME)<0) {
-		return temp3;
+	std::copy(reduced1+6, reduced1+12, temp);
+	if (compareValues(temp, PRIME)<0) {
+		return temp;
 	}
 	else {
-		sub(temp3, temp3, PRIME);
-		return temp3;
+		sub(temp, temp, PRIME);
+		return temp;
 	}
 }
 
 Fq Fq::operator*(const Fq& rhs)
 {
 	auto* result = (unsigned long*)malloc(FQ_BYTES*2);
-	mul(result, this->value, rhs.value);
-	return Fq(reduce(result));
+	auto* multiplyAndAdd = (unsigned long*)malloc(sizeof(unsigned long) * 2);
+	mul(result, multiplyAndAdd, this->value, rhs.value);
+    unsigned long *resultLimbs = reduce(result, multiplyAndAdd);
+    free(multiplyAndAdd);
+    return Fq(resultLimbs);
 }
 
 bool Fq::operator==(const Fq& rhs) const

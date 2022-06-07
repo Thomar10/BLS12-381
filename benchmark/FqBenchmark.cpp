@@ -94,9 +94,9 @@ static void FqMulBig(benchmark::State &state) {
 
 // Register the function as a benchmark
 BENCHMARK(FqAdd);
-BENCHMARK(FqSub);
-BENCHMARK(FqMul);
 BENCHMARK(FqAddBig);
+BENCHMARK(FqSub);
 BENCHMARK(FqSubBig);
+BENCHMARK(FqMul);
 BENCHMARK(FqMulBig);
 BENCHMARK_MAIN();
