@@ -43,6 +43,7 @@ public:
 	 */
 	Fq operator*(const Fq& rhs) override;
 
+    Fq multiplyComba(const Fq& rhs) const;
 	/**
 	 * Checks if two Fq are equal
 	 * @param rhs the Fq to check equality with.

@@ -40,6 +40,23 @@ TEST(FqTest, limbMaker9000)
 		std::cout << (unsigned long)(fqPrime.value[i]) << std::endl;
 	}
 }
+TEST(FqTest, multiplyComba) {
+    mpz_t a, b, c;
+    mpz_inits(a, b, c, nullptr);
+    gmp_randstate_t rstate;
+    gmp_randinit_mt(rstate);
+    for (int i = 0; i<LOOP_COUNT; i++) {
+        mpz_urandomb(a, rstate, 380);
+        mpz_urandomb(b, rstate, 380);
+        Fq fqA = Fq(a);
+        Fq fqB = Fq(b);
+        mpz_mul(c, a, b);
+        mpz_mod(c, c, PRIME_TEST.get_mpz_t());
+        Fq cc = fqA.multiplyComba(fqB);
+        ASSERT_EQ(cc, Fq(c));
+    }
+}
+
 
 TEST(FqTest, multiply) {
 	mpz_t a, b, c;

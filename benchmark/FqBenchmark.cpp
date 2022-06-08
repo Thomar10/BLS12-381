@@ -76,6 +76,20 @@ static void FqMul(benchmark::State &state) {
 		aa * bb;
 	}
 }
+static void FqMulComba(benchmark::State &state) {
+    mpz_t a, b;
+    mpz_inits(a, b, nullptr);
+    gmp_randstate_t rstate;
+    gmp_randinit_default(rstate);
+    mpz_rrandomb(a, rstate, 380);
+    mpz_rrandomb(b, rstate, 380);
+    auto aa = Fq(a);
+    auto bb = Fq(b);
+    for (auto _: state) {
+        aa.multiplyComba(bb);
+    }
+}
+
 
 static void FqMulBig(benchmark::State &state) {
 	mpz_t a, b;
@@ -98,5 +112,6 @@ BENCHMARK(FqAddBig);
 BENCHMARK(FqSub);
 BENCHMARK(FqSubBig);
 BENCHMARK(FqMul);
+BENCHMARK(FqMulComba);
 BENCHMARK(FqMulBig);
 BENCHMARK_MAIN();
