@@ -57,6 +57,16 @@ TEST(FqTest, multiplyComba) {
     }
 }
 
+TEST(FqTest, something) {
+    fq a, b;
+    fq_new(a);
+    fq_new(b);
+    fq_random(a);
+    fq_random(b);
+    for(int n=0; n<FQ_NUMBER_OF_LIMBS; n++) {
+        std::cout << a[n] << " " << std::endl;
+    }
+}
 
 TEST(FqTest, multiply) {
 	mpz_t a, b, c;

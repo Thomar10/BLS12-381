@@ -11,7 +11,11 @@
 
 #define FQ_BYTES 48
 #define FQ_NUMBER_OF_LIMBS 6
-
+#define some_align
+#define fq_new(A)			/* empty */
+#define fp_free(A)			/* empty */
+typedef some_align unsigned long fq[FQ_NUMBER_OF_LIMBS];
+#define PRIME_FQ fq[1, 1, 1, 1, 1, 1];
 class Fq : FiniteField<Fq> {
 public:
 	/**
@@ -63,10 +67,15 @@ public:
 	 */
 	[[nodiscard]] unsigned char* serialize() const;
 
+    Fq addSmart(const Fq& rhs) const;
+
+    Fq addSmart3(const Fq& rhs) const;
+
 	unsigned long* value;
 private:
 	explicit Fq(const unsigned long* limbs);
 
 };
-
+void fq_random(fq a);
+void add_something(fq c, const fq a, const fq b);
 #endif //BLS12_381_FQ_H
