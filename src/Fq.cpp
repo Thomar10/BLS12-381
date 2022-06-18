@@ -66,30 +66,8 @@ typedef unsigned __int128 uint128_t;
     (R2) += (R1) < _r1;                                                     \
 
 
-/**
- * BLA BLA
- *
- * @param[in,out] carry_add		- most significant word of the triple register.
- * @param[in,out] C1		- middle word of the triple register.
- * @param[in,out] R1		- lowest significant word of the triple register.
- * @param[in,out] C0		- most significant word of the triple register.
- * @param[in,out] R0		- lowest significant word of the triple register.
- * @param[in] A				- the first digit to multiply.
- * @param[in] B				- the second digit to multiply.
- */
-#define ADD_VERY_SMART(carry_add, C1, R1, C0, R0, A, B) \
-    ((R0) = (A) + (B));                           \
-    ((C0) = (R0) < (A));                  \
-    ((R1) = (R0) + (carry_add));              \
-    ((C1) =(R1) < (R0));                  \
-    ((carry_add) = c0 | c1);                  \
-
-
-
-
 int compareValues(const unsigned long *left, const unsigned long *right) {
     for (int i = FQ_NUMBER_OF_LIMBS - 1; i >= 0; i--) {
-
         if (left[i] < right[i]) {
             return -1;
         } else if (left[i] > right[i]) {
@@ -123,7 +101,7 @@ Fq::Fq(const mpz_t &bigint) {
     //mpz_clear(valueToSet);
 }
 
-void addV3(unsigned long *result, const unsigned long *left, const unsigned long *right) {
+void add(unsigned long *result, const unsigned long *left, const unsigned long *right) {
     int i;
     unsigned long carry, c0, c1, r0, r1;
 
@@ -138,46 +116,7 @@ void addV3(unsigned long *result, const unsigned long *left, const unsigned long
     }
 }
 
-void fq_random(fq a) {
-    std::random_device rd;     //Get a random seed from the OS entropy device, or whatever
-    std::mt19937_64 eng(rd()); //Use the 64-bit Mersenne Twister 19937 generator
-    //and seed it with entropy.
-
-    //Define the distribution, by default it goes from 0 to MAX(unsigned long long)
-    //or what have you.
-    std::uniform_int_distribution<unsigned long long> distr;
-
-    //Generate random numbers
-    for(int n=0; n<FQ_NUMBER_OF_LIMBS; a++, n++) {
-        *a =  distr(eng);
-    }
-
-}
-
-void add_something(fq c, const fq a, const fq b) {
-    addV3(c, a, b);
-    if (compareValues(c, PRIME)) {
-        addV3(c, a, b);
-    }
-}
-
-void addV2(unsigned long *result, const unsigned long *left, const unsigned long *right) {
-    int i;
-    unsigned long carry, c0, c1, r0, r1;
-
-    carry = 0;
-    for (i = 0; i < FQ_NUMBER_OF_LIMBS; i++, left++, right++, result++) {
-        ADD_VERY_SMART(carry, c1, r1, c0, r0, *left, *right);
-        r0 = (*left) + (*right);
-        c0 = (r0 < (*left));
-        r1 = r0 + carry;
-        c1 = (r1 < r0);
-        carry = c0 | c1;
-        (*result) = r1;
-    }
-}
-
-unsigned long *add(unsigned long *result, const unsigned long *left, const unsigned long *right) {
+unsigned long *addOld(unsigned long *result, const unsigned long *left, const unsigned long *right) {
     unsigned long difference = 0;
     for (int i = 0; i < FQ_NUMBER_OF_LIMBS; i++) {
         unsigned long sum = left[i] + right[i] + difference;
@@ -187,7 +126,21 @@ unsigned long *add(unsigned long *result, const unsigned long *left, const unsig
     return result;
 }
 
-int sub(unsigned long *result, const unsigned long *left, const unsigned long *right) {
+unsigned long sub(unsigned long *result, const unsigned long *left, const unsigned long *right) {
+    int i;
+    unsigned long carry, r0, diff;
+
+    carry = 0;
+    for (i = 0; i < FQ_NUMBER_OF_LIMBS; i++, left++, right++, right++) {
+        diff = (*left) - (*right);
+        r0 = diff - carry;
+        carry = ((*left) < (*right)) || (carry && !diff);
+        (*result) = r0;
+    }
+    return carry;
+}
+
+int subOld(unsigned long *result, const unsigned long *left, const unsigned long *right) {
     unsigned long borrow = 0;
     unsigned long diff;
     for (int i = 0; i < FQ_NUMBER_OF_LIMBS; i++) {
@@ -207,23 +160,6 @@ Fq Fq::operator+(const Fq &rhs) {
     return Fq(result);
 }
 
-Fq Fq::addSmart3(const Fq &rhs) const {
-    auto *result = (unsigned long *) malloc(FQ_BYTES);
-    addV3(result, this->value, rhs.value);
-    if (compareValues(result, PRIME) >= 0) {
-        sub(result, result, PRIME);
-    }
-    return Fq(result);
-}
-
-Fq Fq::addSmart(const Fq &rhs) const {
-    auto *result = (unsigned long *) malloc(FQ_BYTES);
-    addV2(result, this->value, rhs.value);
-    if (compareValues(result, PRIME) >= 0) {
-        sub(result, result, PRIME);
-    }
-    return Fq(result);
-}
 
 Fq Fq::operator-(const Fq &rhs) {
     auto *diff = (unsigned long *) malloc(FQ_BYTES);
@@ -279,53 +215,53 @@ void multiplyTUV(unsigned long *result, unsigned long a, unsigned long b, const 
 }
 
 
-void combaAccumulate(unsigned long T, unsigned long R2, unsigned long R1, unsigned long R0, unsigned long A) {
-    (T) = (R1);
-    (R0) += (A);
-    (R1) += (R0) < (A);
-    (R2) += (R1) < (T);
-}
+//void combaAccumulate(unsigned long T, unsigned long R2, unsigned long R1, unsigned long R0, unsigned long A) {
+//    (T) = (R1);
+//    (R0) += (A);
+//    (R1) += (R0) < (A);
+//    (R2) += (R1) < (T);
+//}
+//
+//void combaMultStep(unsigned long R2, unsigned long R1, unsigned long R0, unsigned long A, unsigned long B) {
+//    unsigned long r, r0, r1;
+//    r0 = A * B;
+//    r1 = multiplyHigh(A, B);
+//    combaAccumulate(r, R2, R1, R0, r0);
+//    (R1) += r1;
+//    (R2) += (R1) < r1;
+//}
 
-void combaMultStep(unsigned long R2, unsigned long R1, unsigned long R0, unsigned long A, unsigned long B) {
-    unsigned long r, r0, r1;
-    r0 = A * B;
-    r1 = multiplyHigh(A, B);
-    combaAccumulate(r, R2, R1, R0, r0);
-    (R1) += r1;
-    (R2) += (R1) < r1;
-}
-
-void combaV2(unsigned long *c, const unsigned long *left, const unsigned long *right) {
-    int i, j;
-    const unsigned long *tmpa, *tmpb;
-    unsigned long r0, r1, r2;
-
-    r0 = r1 = r2 = 0;
-    for (i = 0; i < FQ_NUMBER_OF_LIMBS; i++, c++) {
-        tmpa = left;
-        tmpb = right + i;
-        for (j = 0; j <= i; j++, tmpa++, tmpb--) {
-            //std::cout << "value of r2 before going in " << r0 << std::endl;
-            RLC_COMBA_STEP_MUL(r2, r1, r0, *tmpa, *tmpb);
-            //std::cout << "value of r2 after going in "  << r0 << std::endl;
-        }
-        *c = r0;
-        r0 = r1;
-        r1 = r2;
-        r2 = 0;
-    }
-    for (i = 0; i < FQ_NUMBER_OF_LIMBS; i++, c++) {
-        tmpa = left + i + 1;
-        tmpb = right + (FQ_NUMBER_OF_LIMBS - 1);
-        for (j = 0; j < FQ_NUMBER_OF_LIMBS - (i + 1); j++, tmpa++, tmpb--) {
-            combaMultStep(r2, r1, r0, *tmpa, *tmpb);
-        }
-        *c = r0;
-        r0 = r1;
-        r1 = r2;
-        r2 = 0;
-    }
-}
+//void combaV2(unsigned long *c, const unsigned long *left, const unsigned long *right) {
+//    int i, j;
+//    const unsigned long *tmpa, *tmpb;
+//    unsigned long r0, r1, r2;
+//
+//    r0 = r1 = r2 = 0;
+//    for (i = 0; i < FQ_NUMBER_OF_LIMBS; i++, c++) {
+//        tmpa = left;
+//        tmpb = right + i;
+//        for (j = 0; j <= i; j++, tmpa++, tmpb--) {
+//            //std::cout << "value of r2 before going in " << r0 << std::endl;
+//            RLC_COMBA_STEP_MUL(r2, r1, r0, *tmpa, *tmpb);
+//            //std::cout << "value of r2 after going in "  << r0 << std::endl;
+//        }
+//        *c = r0;
+//        r0 = r1;
+//        r1 = r2;
+//        r2 = 0;
+//    }
+//    for (i = 0; i < FQ_NUMBER_OF_LIMBS; i++, c++) {
+//        tmpa = left + i + 1;
+//        tmpb = right + (FQ_NUMBER_OF_LIMBS - 1);
+//        for (j = 0; j < FQ_NUMBER_OF_LIMBS - (i + 1); j++, tmpa++, tmpb--) {
+//            combaMultStep(r2, r1, r0, *tmpa, *tmpb);
+//        }
+//        *c = r0;
+//        r0 = r1;
+//        r1 = r2;
+//        r2 = 0;
+//    }
+//}
 
 void comba(unsigned long *product, const unsigned long *left, const unsigned long *right) {
     auto *tuv = static_cast<unsigned long *>(malloc(sizeof(unsigned long) * 3));
@@ -351,49 +287,49 @@ void comba(unsigned long *product, const unsigned long *left, const unsigned lon
     product[2 * FQ_NUMBER_OF_LIMBS - 1] = tuv[2];
 }
 
-void fq_reduce(unsigned long *c, unsigned long *a) {
-    int i, j;
-    unsigned long t, r0, r1, r2, u, *tmp, *tmpc;
-    const unsigned long *m, *tmpm;
-
-    u = *FACTOR;
-    m = PRIME;
-    tmpc = c;
-
-    r0 = r1 = r2 = 0;
-    for (i = 0; i < FQ_NUMBER_OF_LIMBS; i++, tmpc++, a++) {
-        tmp = c;
-        tmpm = m + i;
-        for (j = 0; j < i; j++, tmp++, tmpm--) {
-            combaMultStep(r2, r1, r0, *tmp, *tmpm);
-        }
-        combaAccumulate(t, r2, r1, r0, *a);
-        *tmpc = (unsigned long) (r0 * u);
-        combaMultStep(r2, r1, r0, *tmpc, *m);
-        r0 = r1;
-        r1 = r2;
-        r2 = 0;
-    }
-
-    for (i = FQ_NUMBER_OF_LIMBS; i < 2 * FQ_NUMBER_OF_LIMBS - 1; i++, a++) {
-        tmp = c + (i - FQ_NUMBER_OF_LIMBS + 1);
-        tmpm = m + FQ_NUMBER_OF_LIMBS - 1;
-        for (j = i - FQ_NUMBER_OF_LIMBS + 1; j < FQ_NUMBER_OF_LIMBS; j++, tmp++, tmpm--) {
-            combaMultStep(r2, r1, r0, *tmp, *tmpm);
-        }
-        combaAccumulate(t, r2, r1, r0, *a);
-        c[i - FQ_NUMBER_OF_LIMBS] = r0;
-        r0 = r1;
-        r1 = r2;
-        r2 = 0;
-    }
-    combaAccumulate(t, r2, r1, r0, *a);
-    c[FQ_NUMBER_OF_LIMBS - 1] = r0;
-
-    if (r1 || compareValues(c, m) >= 0) {
-        sub(c, c, m);
-    }
-}
+//void fq_reduce(unsigned long *c, unsigned long *a) {
+//    int i, j;
+//    unsigned long t, r0, r1, r2, u, *tmp, *tmpc;
+//    const unsigned long *m, *tmpm;
+//
+//    u = *FACTOR;
+//    m = PRIME;
+//    tmpc = c;
+//
+//    r0 = r1 = r2 = 0;
+//    for (i = 0; i < FQ_NUMBER_OF_LIMBS; i++, tmpc++, a++) {
+//        tmp = c;
+//        tmpm = m + i;
+//        for (j = 0; j < i; j++, tmp++, tmpm--) {
+//            combaMultStep(r2, r1, r0, *tmp, *tmpm);
+//        }
+//        combaAccumulate(t, r2, r1, r0, *a);
+//        *tmpc = (unsigned long) (r0 * u);
+//        combaMultStep(r2, r1, r0, *tmpc, *m);
+//        r0 = r1;
+//        r1 = r2;
+//        r2 = 0;
+//    }
+//
+//    for (i = FQ_NUMBER_OF_LIMBS; i < 2 * FQ_NUMBER_OF_LIMBS - 1; i++, a++) {
+//        tmp = c + (i - FQ_NUMBER_OF_LIMBS + 1);
+//        tmpm = m + FQ_NUMBER_OF_LIMBS - 1;
+//        for (j = i - FQ_NUMBER_OF_LIMBS + 1; j < FQ_NUMBER_OF_LIMBS; j++, tmp++, tmpm--) {
+//            combaMultStep(r2, r1, r0, *tmp, *tmpm);
+//        }
+//        combaAccumulate(t, r2, r1, r0, *a);
+//        c[i - FQ_NUMBER_OF_LIMBS] = r0;
+//        r0 = r1;
+//        r1 = r2;
+//        r2 = 0;
+//    }
+//    combaAccumulate(t, r2, r1, r0, *a);
+//    c[FQ_NUMBER_OF_LIMBS - 1] = r0;
+//
+//    if (r1 || compareValues(c, m) >= 0) {
+//        sub(c, c, m);
+//    }
+//}
 
 void mul(unsigned long *result, unsigned long *multiplyAndAdd, const unsigned long *left, const unsigned long *right) {
     for (int i = 0; i < FQ_NUMBER_OF_LIMBS; i++) {
@@ -492,13 +428,14 @@ unsigned char *Fq::serialize() const {
 }
 
 Fq Fq::multiplyComba(const Fq &rhs) const {
-    auto *result = (unsigned long *) (malloc(FQ_BYTES * 2));
-    auto *resultLimbs = (unsigned long *) (malloc(FQ_BYTES));
-    //auto *multiplyAndAdd = (unsigned long *) malloc(sizeof(unsigned long) * 2);
-    combaV2(result, this->value, rhs.value);
-    fq_reduce(resultLimbs, result);
-
-    //unsigned long *resultLimbs = reduce(result, multiplyAndAdd);
-    return Fq(resultLimbs);
+//    auto *result = (unsigned long *) (malloc(FQ_BYTES * 2));
+//    auto *resultLimbs = (unsigned long *) (malloc(FQ_BYTES));
+//    //auto *multiplyAndAdd = (unsigned long *) malloc(sizeof(unsigned long) * 2);
+//    combaV2(result, this->value, rhs.value);
+//    fq_reduce(resultLimbs, result);
+//
+//    //unsigned long *resultLimbs = reduce(result, multiplyAndAdd);
+//    return Fq(resultLimbs);
+    return rhs;
 }
 
