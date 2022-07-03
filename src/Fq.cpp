@@ -18,7 +18,6 @@ const unsigned long PRIME[] = {13402431016077863595UL, 2210141511517208575UL, 74
 const unsigned long FACTOR[] = {9940570264628428797UL, 2912381532814513128, 1652591199965612872,
 								1868090109324352332, 7544399084751736664, 14893510650384546964UL};
 
-
 const int REDUCER_BITS = 384;
 
 int compareValues(const unsigned long* left, const unsigned long* right)
@@ -67,15 +66,20 @@ Fq::Fq(const mpz_t& bigint)
 	//mpz_clear(valueToSet);
 }
 
-unsigned long* add(unsigned long* result, const unsigned long* left, const unsigned long* right)
+void add(unsigned long* result, const unsigned long* left, const unsigned long* right)
 {
-	unsigned long difference = 0;
-	for (int i = 0; i<FQ_NUMBER_OF_LIMBS; i++) {
-		unsigned long sum = left[i]+right[i]+difference;
-		difference = sum<left[i] ? 1 : 0;
-		result[i] = sum;
+	int i;
+	unsigned long carry, c0, c1, r0, r1;
+
+	carry = 0;
+	for (i = 0; i<FQ_NUMBER_OF_LIMBS; i++, left++, right++, result++) {
+		r0 = (*left)+(*right);
+		c0 = (r0<(*left));
+		r1 = r0+carry;
+		c1 = (r1<r0);
+		carry = c0 | c1;
+		(*result) = r1;
 	}
-	return result;
 }
 
 int sub(unsigned long* result, const unsigned long* left, const unsigned long* right)

@@ -54,7 +54,8 @@ TEST(FqTest, multiply) {
 		mpz_mul(c, a, b);
 		mpz_mod(c, c, PRIME_TEST.get_mpz_t());
 		Fq cc = fqA*fqB;
-		ASSERT_EQ(cc, Fq(c));
+		Fq ccc = Fq(c);
+		ASSERT_EQ(cc, ccc);
 	}
 }
 
