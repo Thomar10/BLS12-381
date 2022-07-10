@@ -80,12 +80,9 @@ void add(unsigned long *result, const unsigned long *left,
   carry = 0;
   for (i = 0; i < loopLength * FQ_NUMBER_OF_LIMBS;
        i++, left++, right++, result++) {
-    r0 = (*left) + (*right);
-    c0 = (r0 < (*left));
-    r1 = r0 + carry;
-    c1 = (r1 < r0);
-    carry = c0 | c1;
-    (*result) = r1;
+    r0 = (*left) + (*right) + carry;
+    carry = (r0 < (*left));
+    (*result) = r0;
   }
 }
 
