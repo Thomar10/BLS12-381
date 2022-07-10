@@ -24,6 +24,12 @@ const unsigned long FACTOR[] = {9940570264628428797UL, 2912381532814513128,
 
 const int REDUCER_BITS = 384;
 
+/**
+ * Sets all indexes to 0 in the array.
+ *
+ * @param pointerArray array to zero
+ * @param length of the array as multiple of 6
+ */
 static void initializePointerArray(unsigned long *pointerArray,
                                    const int length) {
   for (int j = 0; j < length * FQ_NUMBER_OF_LIMBS; j++) {
@@ -75,7 +81,7 @@ Fq::Fq(__mpz_struct *bigint) {
 void add(unsigned long *result, const unsigned long *left,
          const unsigned long *right, const int loopLength) {
   int i;
-  unsigned long carry, c0, c1, r0, r1;
+  unsigned long carry, r0;
 
   carry = 0;
   for (i = 0; i < loopLength * FQ_NUMBER_OF_LIMBS;
