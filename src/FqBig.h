@@ -21,6 +21,7 @@ public:
 
     bool operator==(const FqBig &rhs) const override;
 
+    [[nodiscard]] std::string toString() const;
 //private:
     mpz_t value{};
 };
