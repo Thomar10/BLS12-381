@@ -1,13 +1,7 @@
-//
-// Created by Thomas Luxhøj on 30-05-2022.
-//
-
 #include "Fq.h"
-#include <bitset>
 #include <gmpxx.h>
 
 #define stack_helper
-typedef __uint128_t bigNum;
 
 typedef stack_helper unsigned long fq_mul_helper[2];
 #define fq_helper_new(A)  /* empty */
@@ -30,15 +24,24 @@ const unsigned long FACTOR[] = {9940570264628428797UL, 2912381532814513128,
 
 const int REDUCER_BITS = 384;
 
-static void initializePointerArray(unsigned long *pointerArray, int length) {
+static void initializePointerArray(unsigned long *pointerArray,
+                                   const int length) {
   for (int j = 0; j < length * FQ_NUMBER_OF_LIMBS; j++) {
     pointerArray[j] = 0;
   }
 }
 
-int compareValues(const unsigned long *left, const unsigned long *right) {
+/**
+ * Compares left with right. Returns -1 if left is less than right, 0 is equal
+ * and 1 if greater.
+ *
+ * @param left to compare
+ * @param right to compare
+ * @return comparison result.
+ */
+static int compareValues(const unsigned long *left,
+                         const unsigned long *right) {
   for (int i = FQ_NUMBER_OF_LIMBS - 1; i >= 0; i--) {
-
     if (left[i] < right[i]) {
       return -1;
     } else if (left[i] > right[i]) {
@@ -70,12 +73,13 @@ Fq::Fq(__mpz_struct *bigint) {
 }
 
 void add(unsigned long *result, const unsigned long *left,
-         const unsigned long *right) {
+         const unsigned long *right, const int loopLength) {
   int i;
   unsigned long carry, c0, c1, r0, r1;
 
   carry = 0;
-  for (i = 0; i < FQ_NUMBER_OF_LIMBS; i++, left++, right++, result++) {
+  for (i = 0; i < loopLength * FQ_NUMBER_OF_LIMBS;
+       i++, left++, right++, result++) {
     r0 = (*left) + (*right);
     c0 = (r0 < (*left));
     r1 = r0 + carry;
@@ -99,7 +103,7 @@ int sub(unsigned long *result, const unsigned long *left,
 
 Fq Fq::operator+(const Fq &rhs) {
   auto *result = (unsigned long *)malloc(FQ_BYTES);
-  add(result, this->value, rhs.value);
+  add(result, this->value, rhs.value, 1);
   if (compareValues(result, PRIME) >= 0) {
     sub(result, result, PRIME);
   }
@@ -110,15 +114,13 @@ Fq Fq::operator-(const Fq &rhs) {
   auto *diff = (unsigned long *)malloc(FQ_BYTES);
   int borrow = sub(diff, this->value, rhs.value);
   if (borrow != 0) {
-    add(diff, diff, PRIME);
+    add(diff, diff, PRIME, 1);
   }
   return Fq(diff);
 }
 
 unsigned long multiplyHigh(unsigned long x, unsigned long y) {
-  unsigned long high = ((bigNum)x * (bigNum)y) >> 64;
-  return high;
-  /*unsigned long x1 = x >> 32;
+  unsigned long x1 = x >> 32;
   unsigned long x2 = x & 0xFFFFFFFFL;
   unsigned long y1 = y >> 32;
   unsigned long y2 = y & 0xFFFFFFFFL;
@@ -127,7 +129,7 @@ unsigned long multiplyHigh(unsigned long x, unsigned long y) {
   unsigned long z1 = t & 0xFFFFFFFFL;
   unsigned long z0 = t >> 32;
   z1 += x2 * y1;
-  return x1 * y1 + z0 + (z1 >> 32);*/
+  return x1 * y1 + z0 + (z1 >> 32);
 }
 
 void multiplyUnsignedLongsAndAdd(fq_mul_helper result, unsigned long left,
@@ -173,31 +175,18 @@ void multiplyAndModReduce(unsigned long *result, const unsigned long *product,
   }
 }
 
-void addLong(unsigned long *result, const unsigned long *left,
-             const unsigned long *right) {
-  unsigned long difference = 0;
-  for (int i = 0; i < FQ_NUMBER_OF_LIMBS * 2; i++) {
-    unsigned long sum = left[i] + right[i] + difference;
-    difference = sum < left[i] ? 1 : 0;
-    result[i] = sum;
-  }
-}
-
 void reduce(unsigned long *result, unsigned long *product, unsigned long *temp,
             unsigned long *reduced1, fq_mul_helper mulAndAddHelper) {
   multiplyAndModReduce(temp, product, mulAndAddHelper);
   mul(reduced1, temp, PRIME, mulAndAddHelper);
-  addLong(reduced1, product, reduced1);
-  // Shift right 384 bits, here comes the advance of not our chosen reducer.
+  add(reduced1, product, reduced1, 2);
+
+  // Shift right 384 bits, here comes the advance of our chosen reducer.
   // As the shift is simply the upper 6 limbs.
-  for (int i = 6, j = 0; i < 2 * FQ_NUMBER_OF_LIMBS; i++, j++) {
-    result[j] = reduced1[i];
-  }
-  // std::copy(reduced1 + 6, reduced1 + 12, result);
+  std::copy(reduced1 + 6, reduced1 + 12, result);
   if (compareValues(result, PRIME) >= 0) {
     sub(result, result, PRIME);
   }
-  fq_helper_free(temp);
 }
 
 Fq Fq::operator*(const Fq &rhs) {
@@ -255,4 +244,5 @@ unsigned char *Fq::serialize() const {
   }
   return arr;
 }
+
 Fq::~Fq() { std::free(this->value); }
